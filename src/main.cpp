@@ -24,7 +24,7 @@ int sampleIndex = 0;
 // Fonction d'interruption du timer pour la lecture analogique
 void IRAM_ATTR onTimer() {
   // Lecture de l'échantillon courant
-  int16_t x = analogRead(sensorPin);
+  int16_t x = analogRead(sensorPin) - 2048; // Ajustement pour inclure les valeurs négatives
 
   int16_t y = filtre(x);
 
@@ -38,22 +38,12 @@ void dacWriteTask(void *parameter) {
   while (true) {
     // Réception de l'échantillon depuis la file d'attente
     if (xQueueReceive(queue, &x, portMAX_DELAY) == pdPASS) {
-      // Affichage de l'échantillon filtré
-      //Serial.print(x);
-      //Serial.print("\tto\t");
-
       // Mise à l'échelle et limitation de la valeur de sortie
-      int outputValue = map(x, 0, 4095, 0, 255);    // Conversion de la plage de 0-4095 à 0-255 pour DAC
+      int outputValue = map(x, -2048, 2047, 0, 255); // Conversion de la plage de -2048 à 2047 à 0-255 pour DAC
       outputValue = constrain(outputValue, 0, 255); // Limitation de la valeur entre 0 et 255
 
       // Génération du signal traité sur la broche de sortie
       dacWrite(outputPin, outputValue); // Utilisation de dacWrite pour la sortie DAC sur ESP32
-
-      //Serial.println(outputValue);
-
-      // Affichage du nombre de cycles CPU
-      //Serial.print("Cycles CPU: ");
-      //Serial.println(cycleCount);
     }
   }
 }
@@ -78,7 +68,7 @@ void setup() {
   xTaskCreatePinnedToCore(
       dacWriteTask,     // Fonction de la tâche
       "DacWriteTask",   // Nom de la tâche
-      2048*2,             // Taille de la pile
+      2048,             // Taille de la pile
       NULL,             // Paramètre de la tâche
       1,                // Priorité de la tâche
       NULL,             // Handle de la tâche
@@ -101,7 +91,7 @@ int16_t filtre(int16_t x) {
   sampleIndex = (sampleIndex + 1) % M;
 
   // Application du filtre à moyenne glissante
-  int16_t y = sum >> 2;
+  int16_t y = sum / M;
 
   // Mesure du nombre de cycles CPU après le filtrage
   uint32_t endCycleCount = ESP.getCycleCount();
