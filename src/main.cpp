@@ -1,7 +1,7 @@
 #include <Arduino.h>
 
 // Paramètres du filtre à moyenne glissante
-const int M = 4; // Nombre d'échantillons pour la moyenne
+const int M = 10; // Nombre d'échantillons pour la moyenne
 int16_t y_prev = 0; // Valeur filtrée précédente
 int16_t sum = 0; // Somme des échantillons
 
@@ -39,8 +39,8 @@ void dacWriteTask(void *parameter) {
     // Réception de l'échantillon depuis la file d'attente
     if (xQueueReceive(queue, &x, portMAX_DELAY) == pdPASS) {
       // Affichage de l'échantillon filtré
-      Serial.print(x);
-      Serial.print("\tto\t");
+      //Serial.print(x);
+      //Serial.print("\tto\t");
 
       // Mise à l'échelle et limitation de la valeur de sortie
       int outputValue = map(x, 0, 4095, 0, 255);    // Conversion de la plage de 0-4095 à 0-255 pour DAC
@@ -49,11 +49,11 @@ void dacWriteTask(void *parameter) {
       // Génération du signal traité sur la broche de sortie
       dacWrite(outputPin, outputValue); // Utilisation de dacWrite pour la sortie DAC sur ESP32
 
-      Serial.println(outputValue);
+      //Serial.println(outputValue);
 
       // Affichage du nombre de cycles CPU
-      Serial.print("Cycles CPU: ");
-      Serial.println(cycleCount);
+      //Serial.print("Cycles CPU: ");
+      //Serial.println(cycleCount);
     }
   }
 }
@@ -78,7 +78,7 @@ void setup() {
   xTaskCreatePinnedToCore(
       dacWriteTask,     // Fonction de la tâche
       "DacWriteTask",   // Nom de la tâche
-      2048,             // Taille de la pile
+      2048*2,             // Taille de la pile
       NULL,             // Paramètre de la tâche
       1,                // Priorité de la tâche
       NULL,             // Handle de la tâche
