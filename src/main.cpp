@@ -1,22 +1,24 @@
 #include <Arduino.h>
 
-// Paramètres du filtre récursif
-const float alpha = 0.1; // Coefficient de lissage (ajustez selon vos besoins)
-int16_t y_prev = 0;      // Valeur filtrée précédente
+// Paramètres du filtre à moyenne glissante
+const int M = 4; // Nombre d'échantillons pour la moyenne
+int16_t y_prev = 0; // Valeur filtrée précédente
+int16_t sum = 0; // Somme des échantillons
 
 // Broche du capteur et broche de sortie
 const int sensorPin = 34; // Broche analogique pour la lecture du signal
 const int outputPin = 25; // Broche PWM pour la sortie du signal filtré
 
 // Déclaration de la fonction de filtrage
-int16_t filtre(int16_t x, int16_t x_prev[], int M);
+int16_t filtre(int16_t x);
 
 // Déclaration de la file d'attente
 QueueHandle_t queue;
 
-// Nombre d'échantillons pour le filtre
-const int numSamples = 2;
-int16_t samples[numSamples];
+uint32_t cycleCount;
+
+// Tableau pour stocker les échantillons
+int16_t samples[M];
 int sampleIndex = 0;
 
 // Fonction d'interruption du timer pour la lecture analogique
@@ -25,8 +27,10 @@ void IRAM_ATTR onTimer()
   // Lecture de l'échantillon courant
   int16_t x = analogRead(sensorPin);
 
+  int16_t y = filtre(x);
+
   // Envoi de l'échantillon à la file d'attente
-  xQueueSendFromISR(queue, &x, NULL);
+  xQueueSendFromISR(queue, &y, NULL);
 }
 
 // Tâche pour l'écriture PWM
@@ -38,25 +42,22 @@ void pwmWriteTask(void *parameter)
     // Réception de l'échantillon depuis la file d'attente
     if (xQueueReceive(queue, &x, portMAX_DELAY) == pdPASS)
     {
-      // Ajout de l'échantillon au tableau
-      samples[sampleIndex] = x;
-      sampleIndex = (sampleIndex + 1) % numSamples;
-
-      // Application du filtre avec les 5 dernières valeurs
-      int16_t y = filtre(x, samples, numSamples);
-
       // Affichage de l'échantillon filtré
-      Serial.print(y);
+      Serial.print(x);
       Serial.print("\tto\t");
 
       // Mise à l'échelle et limitation de la valeur de sortie
-      int outputValue = map(y, 0, 4095, 0, 255);    // Conversion de la plage de 0-4095 à 0-255 pour PWM
+      int outputValue = map(x, 0, 4095, 0, 255);    // Conversion de la plage de 0-4095 à 0-255 pour PWM
       outputValue = constrain(outputValue, 0, 255); // Limitation de la valeur entre 0 et 255
 
       // Génération du signal traité sur la broche de sortie
       ledcWrite(0, outputValue); // Utilisation de ledcWrite pour la sortie PWM sur ESP32
 
       Serial.println(outputValue);
+
+      // Affichage du nombre de cycles CPU
+      Serial.print("Cycles CPU: ");
+      Serial.println(cycleCount);
     }
   }
 }
@@ -80,7 +81,7 @@ void setup()
   // Configuration du timer pour générer une interruption toutes les 1 ms
   hw_timer_t *timer = timerBegin(0, 80, true); // Timer 0, prescaler 80 (1 µs par tick)
   timerAttachInterrupt(timer, &onTimer, true);
-  timerAlarmWrite(timer, 1000, true); // 1000 µs = 1 ms
+  timerAlarmWrite(timer, 400, true); // 1000 µs = 1 ms
   timerAlarmEnable(timer);
 
   // Création de la tâche sur le cœur 0 pour l'écriture PWM
@@ -100,13 +101,24 @@ void loop()
 }
 
 // Définition de la fonction de filtrage
-int16_t filtre(int16_t x, int16_t x_prev[], int M)
+int16_t filtre(int16_t x)
 {
-  // Application du filtre avec les 5 dernières valeurs
-  int16_t y = alpha * x + (1 - alpha) * y_prev;
-  for (int i = 1; i < M; i++) {
-    y += alpha * x_prev[(sampleIndex - i + M) % M];
-  }
-  y_prev = y; // Mise à jour de la valeur filtrée précédente
+      // Mesure du nombre de cycles CPU avant le filtrage
+      uint32_t startCycleCount = ESP.getCycleCount();
+      
+      // Ajout de l'échantillon au tableau
+      sum -= samples[sampleIndex]; // Soustraire l'ancien échantillon de la somme
+      samples[sampleIndex] = x; // Mettre à jour l'échantillon
+      sum += x; // Ajouter le nouvel échantillon à la somme
+      sampleIndex = (sampleIndex + 1) % M;
+
+
+      // Application du filtre à moyenne glissante
+      int16_t y = sum >> 2  ;
+
+      // Mesure du nombre de cycles CPU après le filtrage
+      uint32_t endCycleCount = ESP.getCycleCount();
+      cycleCount = endCycleCount - startCycleCount;
+
   return y;
 }
