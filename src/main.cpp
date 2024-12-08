@@ -1,13 +1,13 @@
 #include <Arduino.h>
 
 // Paramètres du filtre à moyenne glissante
-const int M = 10; // Nombre d'échantillons pour la moyenne
-int16_t y_prev = 0; // Valeur filtrée précédente
-int16_t sum = 0; // Somme des échantillons
+const int M = 10;           // Nombre d'échantillons pour la moyenne
+int16_t y_prev = 0;         // Valeur filtrée précédente
+int16_t sum = 0;            // Somme des échantillons
 
 // Broche du capteur et broche de sortie
-const int sensorPin = 34; // Broche analogique pour la lecture du signal
-const int outputPin = 25; // Broche DAC pour la sortie du signal filtré
+const int sensorPin = 34;   // Broche analogique pour la lecture du signal
+const int outputPin = 25;   // Broche DAC pour la sortie du signal filtré
 
 // Déclaration de la fonction de filtrage
 int16_t filtre(int16_t x);
