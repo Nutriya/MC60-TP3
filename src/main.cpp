@@ -1,13 +1,13 @@
 #include <Arduino.h>
 
 // Paramètres du filtre à moyenne glissante
-const int M = 10;           // Nombre d'échantillons pour la moyenne
+const int M = 15;           // Nombre d'échantillons pour la moyenne
 int16_t y_prev = 0;         // Valeur filtrée précédente
 int16_t sum = 0;            // Somme des échantillons
 
 // Broche du capteur et broche de sortie
-const int sensorPin = 34;   // Broche analogique pour la lecture du signal
-const int outputPin = 25;   // Broche DAC pour la sortie du signal filtré
+const int sensorPin = 25;   // Broche analogique pour la lecture du signal
+const int outputPin = 26;   // Broche DAC pour la sortie du signal filtré
 
 // Déclaration de la fonction de filtrage
 int16_t filtre(int16_t x);
@@ -56,12 +56,12 @@ void setup() {
   pinMode(sensorPin, INPUT);
 
   // Création de la file d'attente
-  queue = xQueueCreate(10, sizeof(int16_t));
+  queue = xQueueCreate(30, sizeof(int16_t));
 
   // Configuration du timer pour générer une interruption toutes les 1 ms
   hw_timer_t *timer = timerBegin(0, 80, true); // Timer 0, prescaler 80 (1 µs par tick)
   timerAttachInterrupt(timer, &onTimer, true);
-  timerAlarmWrite(timer, 1000, true); // 1000 µs = 1 ms
+  timerAlarmWrite(timer, 200, true); // 200 µs 
   timerAlarmEnable(timer);
 
   // Création de la tâche sur le cœur 0 pour l'écriture DAC
