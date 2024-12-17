@@ -5,9 +5,8 @@ const int M = 15;           // Nombre d'échantillons pour la moyenne
 int16_t y_prev = 0;         // Valeur filtrée précédente
 int16_t sum = 0;            // Somme des échantillons
 
-// Broche du capteur et broche de sortie
-const int sensorPin = 25;   // Broche analogique pour la lecture du signal
-const int outputPin = 26;   // Broche DAC pour la sortie du signal filtré
+#define SENSOR_PIN GPIO_NUM_25
+#define OUTPUT_PIN GPIO_NUM_26
 
 // Déclaration de la fonction de filtrage
 int16_t filtre(int16_t x);
@@ -24,7 +23,7 @@ int sampleIndex = 0;
 // Fonction d'interruption du timer pour la lecture analogique
 void IRAM_ATTR onTimer() {
   // Lecture de l'échantillon courant
-  int16_t x = analogRead(sensorPin) - 2048; // Ajustement pour inclure les valeurs négatives
+  int16_t x = analogRead(SENSOR_PIN) - 2048; // Ajustement pour inclure les valeurs négatives
 
   int16_t y = filtre(x);
 
@@ -43,7 +42,7 @@ void dacWriteTask(void *parameter) {
       outputValue = constrain(outputValue, 0, 255); // Limitation de la valeur entre 0 et 255
 
       // Génération du signal traité sur la broche de sortie
-      dacWrite(outputPin, outputValue); // Utilisation de dacWrite pour la sortie DAC sur ESP32
+      dacWrite(OUTPUT_PIN, outputValue); // Utilisation de dacWrite pour la sortie DAC sur ESP32
     }
   }
 }
@@ -53,7 +52,7 @@ void setup() {
   Serial.begin(115200);
 
   // Configuration de la broche du capteur et de la broche de sortie
-  pinMode(sensorPin, INPUT);
+  pinMode(SENSOR_PIN, INPUT);
 
   // Création de la file d'attente
   queue = xQueueCreate(30, sizeof(int16_t));
@@ -65,6 +64,9 @@ void setup() {
   timerAlarmEnable(timer);
 
   // Création de la tâche sur le cœur 0 pour l'écriture DAC
+  /**
+   * On choise d'attribuer la ta coeur 0 puisque les interruption sont raité par la coeur par defaut
+   */
   xTaskCreatePinnedToCore(
       dacWriteTask,     // Fonction de la tâche
       "DacWriteTask",   // Nom de la tâche
