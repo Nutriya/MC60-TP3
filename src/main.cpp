@@ -65,7 +65,7 @@ void setup() {
 
   // Création de la tâche sur le cœur 0 pour l'écriture DAC
   /**
-   * On choise d'attribuer la ta coeur 0 puisque les interruption sont raité par la coeur par defaut
+   * On choise d'attribuer la ta coeur 0 puisque les interruptions sont traité par la coeur 1 par defaut
    */
   xTaskCreatePinnedToCore(
       dacWriteTask,     // Fonction de la tâche
