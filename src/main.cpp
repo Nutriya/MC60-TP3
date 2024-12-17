@@ -1,7 +1,7 @@
 #include <Arduino.h>
 
 // Paramètres du filtre à moyenne glissante
-const int M = 15;           // Nombre d'échantillons pour la moyenne
+const int M = 16;           // Nombre d'échantillons pour la moyenne
 int16_t y_prev = 0;         // Valeur filtrée précédente
 int16_t sum = 0;            // Somme des échantillons
 
@@ -60,7 +60,7 @@ void setup() {
   // Configuration du timer pour générer une interruption toutes les 1 ms
   hw_timer_t *timer = timerBegin(0, 80, true); // Timer 0, prescaler 80 (1 µs par tick)
   timerAttachInterrupt(timer, &onTimer, true);
-  timerAlarmWrite(timer, 200, true); // 200 µs 
+  timerAlarmWrite(timer, 150, true); // 150 µs 
   timerAlarmEnable(timer);
 
   // Création de la tâche sur le cœur 0 pour l'écriture DAC
